@@ -1,0 +1,21 @@
+Additional Habitat Context: [("Rock", "small", "X", "Y"), ("Tree", "small", "X", "Y"), ("Shrub", "small","X","Y")]
+
+
+obj1
+    x = 1
+    void setx(int x)
+        self.x = x
+
+obj2
+    y = 2
+    void sendtocallbacky(anyobject obj)
+        obj.setter(y)
+
+
+variable = obj1()
+
+obj2.sendtocallbacky(variable)
+print(variable.x)
+
+--Output--
+2
