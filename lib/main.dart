@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:geeco/pages/homepage.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter's binding is initialized
+  WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter's binding is initialized.
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
