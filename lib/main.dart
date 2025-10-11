@@ -1,7 +1,10 @@
-import 'dart:ffi';
+// import 'dart:ffi';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
-import 'package:geeco/pages/homepage.dart';
+import 'package:geeco/pages/rootpage.dart';
+import 'package:scaled_size/scaled_size.dart';
+
+// import 'package:flutter/services.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter's binding is initialized
@@ -17,8 +20,12 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: HomePage()
+    return ScaledSize(
+      builder: () {
+        return const MaterialApp(
+          home: RootPage()
+        );
+      }
     );
   }
 }
