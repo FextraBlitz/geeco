@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:geeco/modules/shortsettings.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class SettingsPage extends StatefulWidget {
+  const SettingsPage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    return const Center(
+      child: ShortSettings()
+    );
   }
 }

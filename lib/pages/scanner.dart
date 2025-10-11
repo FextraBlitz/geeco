@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class Scanner extends StatefulWidget {
-  const Scanner({super.key});
+class ScannerPage extends StatefulWidget {
+  const ScannerPage({super.key});
 
   @override
-  State<Scanner> createState() => _ScannerState();
+  State<ScannerPage> createState() => _ScannerPageState();
 }
 
-class _ScannerState extends State<Scanner> {
+class _ScannerPageState extends State<ScannerPage> {
   @override
   Widget build(BuildContext context) {
     return const Placeholder();

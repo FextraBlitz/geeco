@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:geeco/modules/globalbottomnav.dart';
+import 'package:scaled_size/scaled_size.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -8,36 +8,28 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
 
-  void _onItemTapped(int index){
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-    
+class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Center(child:Text(
-          "Example page", 
-          style: TextStyle(
-            color: Colors.white
+    return ScaledSize(
+      size:Size(ScaledSizeUtil.screenWidth, ScaledSizeUtil.screenHeight),
+      builder: () {
+        return Container(
+          constraints: BoxConstraints.expand(),
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              opacity: 0.2,
+              image: AssetImage('assets/images/homepage_bg.png'),
+              fit: BoxFit.contain
+            )
+          ),
+          child: Center(
+            child: Text("No habitats yet, Scan or Edit to get started!", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 1.25.rem))
           )
-        )),
-        backgroundColor: Color(0xFF022000),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(bottomLeft: Radius.circular(100000), bottomRight: Radius.circular(100000)),
-        ),
-      ),
-      body: Center(child: Text("Hello!")),
-      bottomNavigationBar: GlobalBottomNavigationBar(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped
-      ),
+        );
+      }
     );
   }
 }
