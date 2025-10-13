@@ -18,7 +18,7 @@ dev_dependencies:
 
 flutter:
   assets:
-    - assets/images/
+    - assets/images/aboutus_bg.jpg
   fonts:
     - family: Gabarito
       fonts:
