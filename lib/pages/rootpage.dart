@@ -48,7 +48,7 @@ class _RootPageState extends State<RootPage> {
             )
           )
         ),
-        backgroundColor: Color(0xFF022000),
+        backgroundColor: Theme.of(context).colorScheme.tertiary,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.only(bottomLeft: Radius.circular(100000), bottomRight: Radius.circular(100000)),
         ),
