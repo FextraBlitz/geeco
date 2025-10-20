@@ -34,6 +34,7 @@ flutter:
     - assets/images/habitat_objects/Animal/
     - assets/images/habitat_objects/Land/
     - assets/images/habitat_objects/Water/
+    - assets/images/logo.png
     
   fonts:
     - family: Gabarito
