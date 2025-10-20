@@ -2,6 +2,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:geeco/bax_end/theme_bax_end.dart';
+import 'package:geeco/pages/splash.dart';
 import 'package:geeco/pages/rootpage.dart';
 import 'package:geeco/pages/welcome.dart';
 import 'package:provider/provider.dart';
@@ -19,8 +20,8 @@ void main() {
   runApp(
     ChangeNotifierProvider(
       create: (context) => ThemeSelector(),
-      child: const MainApp()
-    )
+      child: const MainApp(),
+    ),
   );
 }
 
@@ -33,9 +34,9 @@ class MainApp extends StatelessWidget {
       builder: () {
         return MaterialApp(
           theme: Provider.of<ThemeSelector>(context).themeData,
-          home: const RootPage()
+          home: const SplashPage(),
         );
-      }
+      },
     );
   }
 }

@@ -14,6 +14,7 @@ dependencies:
   provider: ^6.1.5+1
   envied: ^1.3.1
   lazy_load_indexed_stack: ^1.2.1
+  shared_preferences: ^2.0.15
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +36,8 @@ flutter:
     - assets/images/habitat_objects/Land/
     - assets/images/habitat_objects/Water/
     - assets/images/logo.png
+    - assets/images/dhblogo.png
+    - assets/images/ecolenslogo.png
     
   fonts:
     - family: Gabarito
