@@ -19,8 +19,8 @@ class _ScansPageState extends State<ScansPage> {
   Icon btnIcon = Icon(Icons.camera, color:Colors.white);
 
   void cameraMode(ImageSource source) async {
-    try {
-      File photo = await pickImage(source);
+    File? photo = await pickImage(source);
+    if(photo != null) {
       setState(() {
         images.add(photo);
         imageCount = imageCount + 1;
@@ -29,8 +29,6 @@ class _ScansPageState extends State<ScansPage> {
           btnIcon = Icon(Icons.document_scanner_outlined, color: Colors.white); 
         }
       });
-    } catch(error) {
-      print(error); //! DO SOMETHING ABOUT THIS ERROR
     }
   }
 
@@ -74,15 +72,17 @@ class _ScansPageState extends State<ScansPage> {
       mainAxisAlignment: MainAxisAlignment.center,
       children:[
         if(images.isEmpty) 
-          Text(
-            "Take 3 photos of your area's environment to proceed with evaluation!",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.outline,
-              fontSize: 10,
-              decoration: TextDecoration.underline,
-              decorationColor: Colors.black
-            )
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 0.0, horizontal: 2.0.rem),
+            child: Text(
+              "Take 3 photos of your area's environment to proceed with evaluation!",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color.fromARGB(255, 139, 139, 139),
+                fontSize: 1.0.rem,
+                fontFamily: "Gabarito",
+              )
+            ),
           )
         else 
           Builder(
@@ -138,7 +138,7 @@ class _ScansPageState extends State<ScansPage> {
                     backgroundColor: WidgetStateProperty.resolveWith(captureButton),
                   ),
                   icon: btnIcon,
-                  label: Text(btnText, style: TextStyle(color: Colors.white)),
+                  label: Text(btnText, style: TextStyle(color: Colors.white, fontFamily: "Gabarito")),
                   onPressed: () async {
                     if(imageCount < 2) cameraMode(ImageSource.camera);
                     else {
@@ -176,7 +176,7 @@ class _ScansPageState extends State<ScansPage> {
                     backgroundColor: WidgetStateProperty.resolveWith(captureButton),
                   ),
                   icon: Icon(Icons.image, color: Colors.white),
-                  label: Text("Upload from Gallery", style: TextStyle(color: Colors.white)),
+                  label: Text("Upload from Gallery", style: TextStyle(color: Colors.white, fontFamily: "Gabarito")),
                   onPressed: () async {
                     if(imageCount < 2) cameraMode(ImageSource.gallery);
                   },

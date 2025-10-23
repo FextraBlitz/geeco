@@ -27,7 +27,7 @@ class _RootPageState extends State<RootPage> {
   final List<String> _pageNames = const [
     "Home",
     "Eco-Lens",
-    "Editor",
+    "Digital Habitat Builder",
     "Settings",
   ];
 

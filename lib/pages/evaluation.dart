@@ -1,14 +1,23 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:geeco/bax_end/evaluation_bax_end.dart';
 import 'package:geeco/modules/globalbottomnav.dart';
 import 'package:geeco/pages/editor.dart';
+import 'package:scaled_size/scaled_size.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+List<String> exported_images = [];
 
 class Evaluation extends StatefulWidget {
   List<String> images;
+  dynamic habitat;
+  bool viewMode;
+  int index;
 
-  Evaluation({super.key, required this.images});
+  Evaluation({super.key, required this.images, this.habitat, this.viewMode = false, this.index = 0});
 
   @override
   State<Evaluation> createState() => _EvaluationState();
@@ -40,14 +49,66 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
 
   Future<void> evaluationCall() async {
     if(loading == true) {
-      classifyImgs(widget.images, true).then((String response) {
-        AIEvaluation eval = parse_response(response);
-        setState(() {
-          evaluation = eval;
-          loading = false;
-        });
-      });
+      // if(widget.habitat == null && widget.viewMode == false) {
+      //   classifyImgs(widget.images, true).then((String response) {
+      //     AIEvaluation eval = parse_response(response);
+      //     saveEvaluation(response);
+      //     setState(() {
+      //       evaluation = eval;
+      //       loading = false;
+      //     });
+      //   });
+      // } else if(widget.viewMode == true) {
+      //   SharedPreferences prefs = await SharedPreferences.getInstance();
+      //   List<String> data = prefs.get("History") as List<String>;
+      //   String imageData = prefs.get("Images${widget.index}") as String;
+      //   List<String> imageDataList = imageData.split("evalpic");
+      //   setState(() {
+      //     for(String imgData in imageDataList) widget.images.add(imgData);
+      //     evaluation = parse_response(data[widget.index]);
+      //     loading = false;
+      //   });
+      // } else if(widget.habitat != null && widget.viewMode == false) {
+      //   classifyImgs(widget.images, false, widget.habitat).then((String response) {
+      //     print(response);
+      //     AIEvaluation eval = parse_response(response);
+      //     saveEvaluation(response);
+      //     setState(() {
+      //       evaluation = eval;
+      //       loading = false;
+      //     });
+      //   });
+      // }
+      // if(widget.viewMode == false) saveEvaluation("8\nyes\n9\nyes\n9\nyes\n10\nyes\nmonkey, animals, birds\n1.yes\n2.yes");
+      // else {
+      //   SharedPreferences prefs = await SharedPreferences.getInstance();
+      //   List<String> data = prefs.get("History") as List<String>;
+      //   List<String> imageData = prefs.get("Images${widget.index}") as List<String>;
+      //   setState(() {
+      //     widget.images = imageData;
+      //     evaluation = parse_response(data[widget.index]);
+      //   });
+      // }
     }
+  }
+
+  Future<void> saveEvaluation(String response) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    dynamic data = prefs.get("History");
+    List<String> images = [];
+    for(String image in widget.images) {
+      images.add(base64Encode(File(image).readAsBytesSync()));
+    }
+    print("bax this is ${images.length}");
+    List<String> history = [];
+    if(data != null) history = data as List<String>;
+    history.add(response);
+    int index = history.indexOf(response);
+    setState(() {
+      print("Eval History: ${history}");
+      prefs.setStringList("History", history);
+      prefs.setStringList("Images${index}", images);
+    });
   }
 
   @override
@@ -188,11 +249,20 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                     padding: EdgeInsets.all(10.0),
                                     child: Stack(
                                       children: [
-                                        Image.file(File(widget.images[index]),
-                                          height: 200,
-                                          width: 120,
-                                          fit: BoxFit.cover
-                                        ),
+                                        if(widget.habitat == null && widget.viewMode == false)
+                                          Image.file(File(widget.images[index]),
+                                            height: 200,
+                                            width: 120,
+                                            fit: BoxFit.cover
+                                          ),
+                                        if(widget.habitat != null)
+                                          Image.memory(
+                                            widget.habitat
+                                          ),
+                                        if(widget.habitat == null && widget.viewMode == true && widget.images.length == 3)
+                                          Image.memory(
+                                            base64Decode(widget.images[index])
+                                          )
                                       ]
                                     ),
                                   );
@@ -243,12 +313,12 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.all(Radius.circular(20)),
                                             boxShadow: [
-                                              BoxShadow(
-                                                color: human_color,
-                                                offset: Offset.zero,
-                                                blurRadius: 4,
-                                                spreadRadius: 5
-                                              )
+                                              // BoxShadow(
+                                              //   color: human_color,
+                                              //   offset: Offset.zero,
+                                              //   blurRadius: 4,
+                                              //   spreadRadius: 5
+                                              // )
                                             ],
                                             image: DecorationImage(
                                               image: AssetImage("assets/images/human_health_icon.png"),
@@ -263,7 +333,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                               "HUMAN HEALTH SCORE",
                                               style: TextStyle(
                                                 color: human_color,
-                                                fontSize: 9,
+                                                fontSize: 0.7.rem,
                                                 fontWeight: FontWeight.bold,
                                                 fontStyle: FontStyle.italic
                                               ),
@@ -274,7 +344,8 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                                 minHeight: 17,
                                                 value: (evaluation.human_score!/10).toDouble(),
                                                 borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                color: human_color
+                                                color: human_color,
+                                                backgroundColor: Theme.of(context).colorScheme.outline,
                                               ),
                                             ),
                                           ],
@@ -283,7 +354,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                           "${evaluation.human_score}",
                                           style: TextStyle(
                                             color: human_color,
-                                            fontSize: 20,
+                                            fontSize: 1.5.rem,
                                             fontWeight: FontWeight.bold,
                                             fontStyle: FontStyle.italic,
                                             height: 0.8
@@ -302,12 +373,12 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.all(Radius.circular(20)),
                                             boxShadow: [
-                                              BoxShadow(
-                                                color: env_color,
-                                                offset: Offset.zero,
-                                                blurRadius: 4,
-                                                spreadRadius: 5
-                                              )
+                                              // BoxShadow(
+                                              //   color: env_color,
+                                              //   offset: Offset.zero,
+                                              //   blurRadius: 4,
+                                              //   spreadRadius: 5
+                                              // )
                                             ],
                                             image: DecorationImage(
                                               image: AssetImage("assets/images/env_health_icon.png"),
@@ -322,7 +393,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                               "ENVIRONMENTAL HEALTH SCORE",
                                               style: TextStyle(
                                                 color: env_color,
-                                                fontSize: 9,
+                                                fontSize: 0.7.rem,
                                                 fontWeight: FontWeight.bold,
                                                 fontStyle: FontStyle.italic,
                                               ),
@@ -333,7 +404,8 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                                 minHeight: 17,
                                                 value: (evaluation.env_score!/10).toDouble(),
                                                 borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                color: env_color
+                                                color: env_color,
+                                                backgroundColor: Theme.of(context).colorScheme.outline
                                               ),
                                             ),
                                           ],
@@ -341,8 +413,8 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                         Text(
                                           "${evaluation.env_score}",
                                           style: TextStyle(
-                                            color: human_color,
-                                            fontSize: 20,
+                                            color: env_color,
+                                            fontSize: 1.5.rem,
                                             fontWeight: FontWeight.bold,
                                             fontStyle: FontStyle.italic,
                                             height: 0.8
@@ -361,12 +433,12 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                           decoration: BoxDecoration(
                                             borderRadius: BorderRadius.all(Radius.circular(20)),
                                             boxShadow: [
-                                              BoxShadow(
-                                                color: anim_color,
-                                                offset: Offset.zero,
-                                                blurRadius: 4,
-                                                spreadRadius: 5
-                                              )
+                                              // BoxShadow(
+                                              //   color: anim_color,
+                                              //   offset: Offset.zero,
+                                              //   blurRadius: 4,
+                                              //   spreadRadius: 5
+                                              // )
                                             ],
                                             image: DecorationImage(
                                               image: AssetImage("assets/images/animal_health_icon.png"),
@@ -380,7 +452,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                               "ANIMAL HEALTH SCORE",
                                               style: TextStyle(
                                                 color: anim_color,
-                                                fontSize: 9,
+                                                fontSize: 0.7.rem,
                                                 fontWeight: FontWeight.bold,
                                                 fontStyle: FontStyle.italic
                                               ),
@@ -391,7 +463,8 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                                 minHeight: 17,
                                                 value: (evaluation.anim_score!/10).toDouble(),
                                                 borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                color: anim_color
+                                                color: anim_color,
+                                                backgroundColor: Theme.of(context).colorScheme.outline
                                               ),
                                             ),
                                           ],
@@ -399,8 +472,8 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                         Text(
                                           "${evaluation.anim_score}",
                                           style: TextStyle(
-                                            color: human_color,
-                                            fontSize: 20,
+                                            color: anim_color,
+                                            fontSize: 1.5.rem,
                                             fontWeight: FontWeight.bold,
                                             fontStyle: FontStyle.italic,
                                             height: 0.8
@@ -427,7 +500,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                         child: Text(
                                           "${evaluation.human_eval}",
                                           style: TextStyle(
-                                            fontSize: 10
+                                            fontSize: 0.7.rem
                                           )
                                         ),
                                       )
@@ -451,7 +524,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                         child: Text(
                                           "${evaluation.env_eval}",
                                           style: TextStyle(
-                                            fontSize: 10
+                                            fontSize: 0.7.rem
                                           )
                                         ),
                                       )
@@ -475,7 +548,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                         child: Text(
                                           "${evaluation.anim_eval}",
                                           style: TextStyle(
-                                            fontSize: 10
+                                            fontSize: 0.7.rem
                                           )
                                         ),
                                       )
@@ -484,7 +557,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                       "${evaluation.overall_score}",
                                       style: TextStyle(
                                         color: overall_color,
-                                        fontSize: 70,
+                                        fontSize: 3.rem,
                                         fontWeight: FontWeight.bold,
                                         height: 0.7,
                                       ),
@@ -492,7 +565,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                     Text(
                                       "OVERALL SCORE",
                                       style: TextStyle(
-                                        fontSize: 17,
+                                        fontSize: 1.rem,
                                         fontWeight: FontWeight.bold,
                                         fontStyle: FontStyle.italic,
                                         height: 0.7,
@@ -527,7 +600,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                         child: Text(
                                           "${evaluation.overall_eval}",
                                           style: TextStyle(
-                                            fontSize: 10
+                                            fontSize: 0.7.rem
                                           )
                                         ),
                                       )
@@ -535,7 +608,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                     Text(
                                       "ANIMALS THAT CAN INHABIT THE AREA",
                                       style: TextStyle(
-                                        fontSize: 17,
+                                        fontSize: 1.rem,
                                         fontWeight: FontWeight.bold,
                                         fontStyle: FontStyle.italic,
                                         height: 0.7,
@@ -568,7 +641,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                     Text(
                                       "RECOMMENDATIONS",
                                       style: TextStyle(
-                                        fontSize: 17,
+                                        fontSize: 1.rem,
                                         fontWeight: FontWeight.bold,
                                         fontStyle: FontStyle.italic,
                                         height: 0.7,
@@ -597,7 +670,7 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                               Text(
                                                 reco,
                                                 style: TextStyle(
-                                                  fontSize: 12
+                                                  fontSize: 0.7.rem
                                                 ),
                                               )
                                           ],
@@ -605,29 +678,33 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
                                       )
                                     ),
                                     Text(
-                                      "IMPROVE YOUR AREA WITH THE DIGITAL HABITAT BUILDER",
+                                      widget.habitat != null
+                                      ? "TRY WITH ACTUAL PICTURES"
+                                      : "IMPROVE YOUR AREA WITH THE DIGITAL HABITAT BUILDER",
                                       style: TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 0.7.rem,
                                         fontWeight: FontWeight.bold,
                                         fontStyle: FontStyle.italic,
                                         height: 0.7,
                                       ),
                                     ),
-                                    ElevatedButton.icon(
-                                      icon: Icon(Icons.grass),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        BottomNavigationBar navBar = navbarKey.currentWidget as BottomNavigationBar;
-                                        navBar.onTap!(2);
-                                      }, 
-                                      label: Text("Proceed")
-                                    ),
+                                    if(widget.habitat == null)
+                                      ElevatedButton.icon(
+                                        icon: Icon(Icons.grass),
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          BottomNavigationBar navBar = navbarKey.currentWidget as BottomNavigationBar;
+                                          navBar.onTap!(2);
+                                          exported_images = widget.images;
+                                        }, 
+                                        label: Text("Proceed")
+                                      ),
                                     ElevatedButton.icon(
                                       icon: Icon(Icons.camera),
                                       onPressed: () {
                                         Navigator.pop(context);
-                                      }, 
-                                      label: Text("Try Again")
+                                      },
+                                      label: Text("Proceed to the Eco-Lens")
                                     )
                                   ],
                                 ),

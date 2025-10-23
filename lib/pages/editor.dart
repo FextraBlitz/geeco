@@ -1,11 +1,23 @@
 import 'dart:math';
+import 'package:dynamic_widget/dynamic_widget.dart';
+import 'package:dynamic_widget/dynamic_widget/basic/dynamic_widget_json_exportor.dart';
+import 'package:dynamic_widget/dynamic_widget/basic/stack_positioned_widgets_parser.dart';
+import 'package:dynamic_widget/dynamic_widget/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:gal/gal.dart';
+import 'package:geeco/bax_end/evaluation_bax_end.dart';
+// import 'package:gallery_saver_plus/gallery_saver.dart';
+import 'package:geeco/modules/globalbottomnav.dart';
+import 'package:geeco/pages/evaluation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
+import 'package:scaled_size/scaled_size.dart';
 
 class EditorPage extends StatefulWidget {
   final List<String>? scannedImages;
@@ -26,10 +38,12 @@ class _EditorPageState extends State<EditorPage> {
   late List<Tab> stickerCategoryTabs;
   late Map<String, List<MapEntry<String, String>>> habitatCategoryObjectPaths;
 
-  String? selectedBackdrop;
+  MapEntry<String, String>? selectedBackdrop;
   List<Widget> placedStickers = [];
 
   final GlobalKey _repaintBoundaryKey = GlobalKey();
+  final GlobalKey stickerStack = GlobalKey();
+  final GlobalKey stickerStackElement = GlobalKey();
   ui.Image? _capturedImage;
 
   FocusNode backgroundFocusNode = FocusNode();
@@ -37,7 +51,7 @@ class _EditorPageState extends State<EditorPage> {
   double stickerPickerHeightPercentage = 0.5;
   Function? currentStickerGetterCallback;
   Function? currentStickerSetterCallback;
-  AssetImage defaultBackdrop = AssetImage('assets/images/default_backdrops/backdrops/Clearing.jpg');
+  ImageProvider defaultBackdrop = AssetImage('assets/images/default_backdrops/backdrops/Clearing.jpg');
 
   late final DraggableScrollableController _sheetController;
   final GlobalKey _sheetKey = GlobalKey();
@@ -57,12 +71,23 @@ class _EditorPageState extends State<EditorPage> {
       if (mounted) {
         setState(() {
           _dataLoaded = true;
+          if(exported_images.isEmpty == false) {
+            Image image = Image.file(File(exported_images[0]));
+            defaultBackdrop = image.image;
+            var temp = defaultBackdrops.toList();
+            for(int i = 0; i < exported_images.length; i++) {
+              temp.add(MapEntry("Scanned Image #${i+1}", exported_images[i]));
+            }
+            defaultBackdrops = temp;
+          }
         });
       }
     });
+    print("addlistener");
     _sheetController.addListener(() {
       print("SheetController size: ${_sheetController.size}, Attached: ${_sheetController.isAttached}");
     });
+    print("addedlistener");
   }
 
   Future<void> _loadInitialData() async {
@@ -75,7 +100,7 @@ class _EditorPageState extends State<EditorPage> {
   void dispose() {
     _sheetController.dispose();
     backgroundFocusNode.dispose();
-    stickerCurrentFocusNode.dispose();
+    //stickerCurrentFocusNode.dispose();
     super.dispose();
   }
 
@@ -113,7 +138,11 @@ class _EditorPageState extends State<EditorPage> {
                       child: Container(
                         decoration: BoxDecoration(
                           image: DecorationImage(
-                            image: selectedBackdrop != null ? AssetImage(selectedBackdrop!) : defaultBackdrop,
+                            image: selectedBackdrop != null 
+                            ? selectedBackdrop!.key.startsWith("Scanned") 
+                            ? Image.file(File(selectedBackdrop!.value)).image
+                            : AssetImage(selectedBackdrop!.value)
+                            : defaultBackdrop,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -198,17 +227,26 @@ class _EditorPageState extends State<EditorPage> {
               ),
               padding: EdgeInsets.only(left: 8.0, right: 15.0, top: 10.0, bottom: 10.0),
             ),
-            icon: Icon(Icons.add, size: 32.0),
+            icon: Icon(Icons.document_scanner_outlined, size: 32.0),
             label: Text(
               "Evaluate",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.0),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.0, fontFamily: "Gabarito"),
             ),
             onPressed: _dataLoaded
-                ? () => _openStickerPicker(context)
+                ? () => evaluateCall()
                 : null, // Disable until data is loaded
+          ),
+          SizedBox(height: 16),
+          FloatingActionButton(
+            heroTag: "Save",
+            backgroundColor: Color(0xFF00461A),
+            foregroundColor: Colors.white,
+            onPressed: _dataLoaded ? () => saveDialog() : null,
+            child: Icon(Icons.download, size: 32.0),
           ),
           Spacer(),
           FloatingActionButton(
+            heroTag: "Sticker",
             backgroundColor: Color(0xFF00461A),
             foregroundColor: Colors.white,
             onPressed: _dataLoaded
@@ -223,6 +261,7 @@ class _EditorPageState extends State<EditorPage> {
           ),
           SizedBox(height: 16),
           FloatingActionButton(
+            heroTag: "Backdrop",
             backgroundColor: Color(0xFF00461A),
             foregroundColor: Colors.white,
             onPressed: _dataLoaded ? () => _openBackdropPicker(context) : null,
@@ -239,7 +278,96 @@ class _EditorPageState extends State<EditorPage> {
 
     if (boundary != null) {
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-      _capturedImage = image;
+      setState(() {
+        _capturedImage = image;
+      });
+    }
+  }
+
+  void evaluateCall() async {
+    final List<String> images = [""];
+    await _captureCanvas();
+    final image_byte_data = await _capturedImage?.toByteData(format:ui.ImageByteFormat.png);
+    final image_byte_list = image_byte_data?.buffer.asUint8List();
+    print("Sending image bytes...");
+    BottomNavigationBar navBar = navbarKey.currentWidget as BottomNavigationBar;
+    navBar.onTap!(1);
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (context) => Evaluation(images: images, habitat: image_byte_list))
+    );
+  }
+
+  void saveDialog() {
+    showDialog(
+      context: context, 
+      builder: (BuildContext context) {
+        return SimpleDialog(
+          title: Text("Save this Habitat? (as image)"),
+          children: [
+            SimpleDialogOption(
+              onPressed: () {
+                saveToPhone();
+                Navigator.pop(context);
+              },
+              child: Text(
+                "Save to Gallery",
+                style: TextStyle(
+                  color:Theme.of(context).colorScheme.secondary
+                ),
+              )
+            ),
+            SimpleDialogOption(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text(
+                "Cancel",
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.tertiary
+                )  
+              )
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  Future<void> saveToPhone() async {
+    await _captureCanvas();
+    final image_byte_data = await _capturedImage?.toByteData(format:ui.ImageByteFormat.png);
+    final image_byte_list = image_byte_data?.buffer.asUint8List();
+    await Gal.putImageBytes(image_byte_list!);
+    Fluttertoast.showToast(
+      msg: "Habitat Saved to Gallery",
+      toastLength: Toast.LENGTH_SHORT,
+      fontSize: 0.8.rem,
+      textColor: Theme.of(context).colorScheme.shadow,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+    );
+  }
+
+  Future<void> saveToHomePage() async {
+    for(var sticker in placedStickers) {
+     
+    }
+  }
+
+  Future<void> chooseBackdropFromGallery() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    if(image != null) {
+      setState(() {
+        selectedBackdrop = MapEntry("Scanned", image.path);
+      });
+      Fluttertoast.showToast(
+        msg: "Backdrop Changed",
+        toastLength: Toast.LENGTH_SHORT,
+        fontSize: 0.8.rem,
+        textColor: Theme.of(context).colorScheme.shadow,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+      );
     }
   }
 
@@ -343,7 +471,9 @@ class _EditorPageState extends State<EditorPage> {
                       ),
                       backgroundColor: Color(0xFF3ACF72),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      chooseBackdropFromGallery();
+                    },
                     label: Text(
                       "Choose from files...",
                       style: TextStyle(fontSize: 25, fontFamily: "Gabarito", color: Colors.white),
@@ -508,13 +638,15 @@ class _EditorPageState extends State<EditorPage> {
                     borderRadius: BorderRadius.circular(10),
                     clipBehavior: Clip.antiAlias,
                     child: Ink.image(
-                      image: AssetImage(defaultBackdrops.elementAt(index).value),
+                      image: defaultBackdrops.elementAt(index).key.startsWith("Scanned") 
+                      ? Image.file(File(defaultBackdrops.elementAt(index).value)).image
+                      : AssetImage(defaultBackdrops.elementAt(index).value),
                       fit: BoxFit.cover,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(10.0),
                         onTap: () {
                           setState(() {
-                            selectedBackdrop = defaultBackdrops.elementAt(index).value;
+                            selectedBackdrop = defaultBackdrops.elementAt(index);
                           });
                           print("Selected backdrop: ${defaultBackdrops.elementAt(index).key}");
                         },
@@ -525,9 +657,11 @@ class _EditorPageState extends State<EditorPage> {
                 SizedBox(
                   height: constraints.maxHeight * .10,
                   child: Center(
-                    child: Text(
-                      defaultBackdrops.elementAt(index).key,
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.lightGreen.shade100),
+                    child: FittedBox(
+                      child: Text(
+                        defaultBackdrops.elementAt(index).key,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.lightGreen.shade100),
+                      ),
                     ),
                   ),
                 ),
@@ -558,136 +692,137 @@ class _EditorPageState extends State<EditorPage> {
     FocusNode stickerFocusNode = FocusNode();
     Key stickerKey = UniqueKey();
     return StatefulBuilder(
-      key: stickerKey,
-      builder: (BuildContext context, StateSetter moveSetState) {
-        Widget body = SizedBox(
-          width: 50.0 * scale,
-          height: 50.0 * scale,
-          child: Stack(
-            children: [
-              Image.asset(droppedStickerAssetPath),
-              Visibility(
-                visible: isActive,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.all(Radius.circular(4.0)),
-                    border: Border.all(color: Colors.green),
-                    color: Colors.lightGreen.withAlpha(88),
-                  ),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Align(
-                        alignment: Alignment.topLeft,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.all(Radius.circular(4.0)),
-                            color: Colors.redAccent.shade400.withAlpha(40),
-                          ),
-                          child: SizedBox(
-                            width: 24.0,
-                            height: 24.0,
-                            child: IconButton(
-                              iconSize: 24.0,
-                              padding: EdgeInsets.zero,
-                              constraints: BoxConstraints(),
-                              color: Colors.red,
-                              icon: Icon(Icons.close),
-                              onPressed: () {
-                                setState(() {
-                                  placedStickers.removeWhere((item) => item.key == stickerKey);
-                                });
-                              },
+        key: stickerKey,
+        builder: (BuildContext context, StateSetter moveSetState) {
+          Widget body = SizedBox(
+            width: 50.0 * scale,
+            height: 50.0 * scale,
+            child: Stack(
+              children: [
+                Image.asset(droppedStickerAssetPath),
+                Visibility(
+                  visible: isActive,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(4.0)),
+                      border: Border.all(color: Colors.green),
+                      color: Colors.lightGreen.withAlpha(88),
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(4.0)),
+                              color: Colors.redAccent.shade400.withAlpha(40),
+                            ),
+                            child: SizedBox(
+                              width: 24.0,
+                              height: 24.0,
+                              child: IconButton(
+                                iconSize: 24.0,
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(),
+                                color: Colors.red,
+                                icon: Icon(Icons.close),
+                                onPressed: () {
+                                  print("hibax");
+                                  setState(() {
+                                    placedStickers.removeWhere((item) => item.key == stickerKey);
+                                  });
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Align(
-                        alignment: Alignment.topRight,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.all(Radius.circular(4.0)),
-                            color: Colors.blue.withAlpha(40),
-                          ),
-                          child: SizedBox(
-                            width: 24.0,
-                            height: 24.0,
-                            child: IconButton(
-                              iconSize: 18.0,
-                              padding: EdgeInsets.zero,
-                              constraints: BoxConstraints(),
-                              color: Colors.white,
-                              icon: Icon(Icons.copy_outlined),
-                              onPressed: () {
-                                setState(() {
-                                  placedStickers.add(createNewSticker(droppedStickerAssetPath, offset + Offset(10.0, 10.0), initialScale: scale));
-                                });
-                              },
+                        Align(
+                          alignment: Alignment.topRight,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(4.0)),
+                              color: Colors.blue.withAlpha(40),
+                            ),
+                            child: SizedBox(
+                              width: 24.0,
+                              height: 24.0,
+                              child: IconButton(
+                                iconSize: 18.0,
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(),
+                                color: Colors.white,
+                                icon: Icon(Icons.copy_outlined),
+                                onPressed: () {
+                                  setState(() {
+                                    placedStickers.add(createNewSticker(droppedStickerAssetPath, offset + Offset(10.0, 10.0), initialScale: scale));
+                                  });
+                                },
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-
-        void setScaleCallback(double newScale) {
-          setState(() {
-            moveSetState(() {
-              scale = newScale;
+              ],
+            ),
+          );
+      
+          void setScaleCallback(double newScale) {
+            setState(() {
+              moveSetState(() {
+                scale = newScale;
+              });
             });
-          });
-        }
-
-        return Positioned(
-          top: offset.dy - kToolbarHeight,
-          left: offset.dx,
-          child: Focus(
-            focusNode: stickerFocusNode,
-            onFocusChange: (hasFocus) {
-              print("focus change observed");
-              if (hasFocus) {
-                print("focused");
-                setState(() {
-                  stickerCurrentFocusNode = stickerFocusNode;
-                  currentStickerGetterCallback = getScaleCallback;
-                  currentStickerSetterCallback = setScaleCallback;
-                });
-                moveSetState(() {
-                  isActive = true;
-                });
-              } else {
-                moveSetState(() {
-                  isActive = false;
-                });
-                print("unfocused");
-              }
-            },
-            child: GestureDetector(
-              onTap: () {
-                stickerFocusNode.requestFocus();
-                print("sticker tapped, requesting focus");
-              },
-              child: Draggable(
-                onDragEnd: (details) {
-                  moveSetState(() {
-                    offset = details.offset;
+          }
+      
+          return Positioned(
+            top: offset.dy - kToolbarHeight,
+            left: offset.dx,
+            child: Focus(
+              focusNode: stickerFocusNode,
+              onFocusChange: (hasFocus) {
+                print("focus change observed");
+                if (hasFocus) {
+                  print("focused");
+                  setState(() {
+                    stickerCurrentFocusNode = stickerFocusNode;
+                    currentStickerGetterCallback = getScaleCallback;
+                    currentStickerSetterCallback = setScaleCallback;
                   });
-                  print("moved");
+                  moveSetState(() {
+                    isActive = true;
+                  });
+                } else {
+                  moveSetState(() {
+                    isActive = false;
+                  });
+                  print("unfocused");
+                }
+              },
+              child: GestureDetector(
+                onTap: () {
+                  stickerFocusNode.requestFocus();
+                  print("sticker tapped, requesting focus");
                 },
-                feedback: body,
-                childWhenDragging: Container(),
-                child: body,
+                child: Draggable(
+                  onDragEnd: (details) {
+                    moveSetState(() {
+                      offset = details.offset;
+                    });
+                    print("moved");
+                  },
+                  feedback: body,
+                  childWhenDragging: Container(),
+                  child: body,
+                ),
               ),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
   }
 
   Widget? stickersBuilder(BuildContext context, int index, String category, Function dragCallback, Function dropCallback) {
@@ -712,6 +847,7 @@ class _EditorPageState extends State<EditorPage> {
                       setState(() {
                         placedStickers.add(createNewSticker(habitatCategoryObjectPaths[category]![index].value, details.offset));
                         backgroundFocusNode.requestFocus();
+                        // print('bawawawawa $placedStickers');
                       });
                     },
                     feedback: Material(

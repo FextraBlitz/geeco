@@ -26,7 +26,7 @@ class GlobalBottomNavigationBar extends StatelessWidget {
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.grass_rounded, color: Colors.white),
-          label: 'Editor',
+          label: 'Habitat Builder',
           backgroundColor: Color(0xFF022000)
         ),
         BottomNavigationBarItem(
