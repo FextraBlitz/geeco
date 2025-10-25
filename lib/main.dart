@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:geeco/bax_end/theme_bax_end.dart';
 import 'package:geeco/pages/splash.dart';
-import 'package:geeco/pages/rootpage.dart';
-import 'package:geeco/pages/welcome.dart';
+// import 'package:geeco/pages/rootpage.dart';
+// import 'package:geeco/pages/welcome.dart';
 import 'package:provider/provider.dart';
 import 'package:scaled_size/scaled_size.dart';
 

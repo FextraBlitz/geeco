@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+// import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:geeco/bax_end/evaluation_bax_end.dart';
 import 'package:geeco/modules/globalbottomnav.dart';
-import 'package:geeco/pages/editor.dart';
+// import 'package:geeco/pages/editor.dart';
 import 'package:scaled_size/scaled_size.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-List<String> exported_images = [];
+List<String> exportedImages = [];
 
 class Evaluation extends StatefulWidget {
   List<String> images;
@@ -41,10 +41,10 @@ AIEvaluation evaluation = AIEvaluation(
 class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateMixin{
   late AnimationController control;
   late Animation<double> slideUp;
-  Color human_color = Colors.white;
-  Color env_color = Colors.white;
-  Color anim_color = Colors.white;
-  Color overall_color = Colors.white;
+  Color humanColor = Colors.white;
+  Color envColor = Colors.white;
+  Color animColor = Colors.white;
+  Color overallColor = Colors.white;
   List<Color> scoreRanges = [Colors.red.shade900, Colors.red, Colors.deepOrange, Colors.orange.shade700, const Color.fromARGB(255, 218, 169, 5), const Color.fromARGB(255, 209, 202, 11), Colors.lime.shade700, Colors.lightGreen.shade600, Color(0xFF83BF4F), Color.fromARGB(255, 93, 195, 3)];
 
   Future<void> evaluationCall() async {
@@ -105,10 +105,564 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
     history.add(response);
     int index = history.indexOf(response);
     setState(() {
-      print("Eval History: ${history}");
+      print("Eval History: $history");
       prefs.setStringList("History", history);
-      prefs.setStringList("Images${index}", images);
+      prefs.setStringList("Images$index", images);
     });
+  }
+
+  final int maxScore = 10;
+  Color getScoreColor(int score) {
+    print("color1 ${Colors.red.shade900} ${Color.fromARGB(255, 93, 195, 3)}");
+    HSVColor color1 = HSVColor.fromAHSV(1.0, 0, .85, 0.72);// (120/maxScore)*score;
+    HSVColor color2 = HSVColor.fromAHSV(1.0, 92, 1.0, 0.765);
+    HSVColor lerpColor = HSVColor.lerp(color1, color2, score/maxScore)!;
+    print("color $score $lerpColor");
+    return lerpColor.toColor();
+  }
+  late Map<String, int?> categoryScore;
+  Widget buildFeatureScoreSlider(String category) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      spacing: 11,
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          padding: EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.all(Radius.circular(20)),
+            image: DecorationImage(
+              image: AssetImage("assets/images/score_icons/$category.png"),
+            )
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "${category.toUpperCase()} HEALTH SCORE",
+              style: TextStyle(
+                color: getScoreColor(categoryScore[category]!),
+                fontSize: 0.7.rem,
+                fontWeight: FontWeight.bold,
+                fontStyle: FontStyle.italic
+              ),
+            ),
+            SizedBox(
+              width: 240,
+              child: LinearProgressIndicator(
+                minHeight: 17,
+                value: (categoryScore[category]!/10).toDouble(),
+                borderRadius: BorderRadius.all(Radius.circular(20)),
+                color: getScoreColor(categoryScore[category]!),
+                backgroundColor: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          categoryScore[category].toString(),
+          style: TextStyle(
+            color: getScoreColor(categoryScore[category]!),
+            fontSize: 1.5.rem,
+            fontWeight: FontWeight.bold,
+            fontStyle: FontStyle.italic,
+            height: 0.8
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget buildEvaluationResultsContent() {
+    String? errorMessage;
+    if (evaluation.success_code == -1){
+      errorMessage = "ERROR: PICTURES TOO BLURRY";
+    }
+
+    if (evaluation.success_code == -2){
+      errorMessage = "ERROR: PICTURES DONT SHOW ENVIRONMENTAL ASPECTS";
+    }
+
+    if (evaluation.success_code == -3){
+      errorMessage = "ERROR: ANALYZE FAILED";
+    }
+
+    if (errorMessage != null) {
+      return Container(
+        width: 300,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(11),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).colorScheme.shadow,
+              offset:Offset(3, 3),
+              blurRadius: 3,
+              spreadRadius: 3
+            ),
+          ]
+        ),
+        child: Container(
+          margin: EdgeInsets.all(10),
+          child: Text(errorMessage)
+        )
+      );
+    }
+
+    else {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Center(
+              child: FractionallySizedBox(
+                heightFactor: 0.5,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.images.length,
+                  itemBuilder: 
+                    (BuildContext context, int index) {
+                      return Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: Stack(
+                          children: [
+                            if(widget.habitat == null && widget.viewMode == false)
+                              Image.file(File(widget.images[index]),
+                                height: 200,
+                                width: 120,
+                                fit: BoxFit.cover
+                              ),
+                            if(widget.habitat != null)
+                              Image.memory(
+                                widget.habitat
+                              ),
+                            if(widget.habitat == null && widget.viewMode == true && widget.images.length == 3)
+                              Image.memory(
+                                base64Decode(widget.images[index])
+                              )
+                          ]
+                        ),
+                      );
+                    }
+                ),
+              ),
+            ),
+          ),
+          Container(
+            margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
+            height: MediaQuery.of(context).size.height * 0.5,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              boxShadow: [
+                BoxShadow(
+                  color:Theme.of(context).colorScheme.shadow,
+                  blurRadius: 8.0,
+                )
+              ]
+            ),
+            child: Container(
+              margin: EdgeInsets.all(15),
+              child: Scrollbar(
+                scrollbarOrientation: ScrollbarOrientation.right,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    spacing: 27,
+                    children: [
+                      buildFeatureScoreSlider("human"),
+                      buildFeatureScoreSlider("environmental"),
+                      buildFeatureScoreSlider("animal"),
+                      
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        spacing: 11,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(20)),
+                              image: DecorationImage(
+                                image: AssetImage("assets/images/human_health_icon.png"),
+                              )
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "HUMAN HEALTH SCORE",
+                                style: TextStyle(
+                                  color: humanColor,
+                                  fontSize: 0.7.rem,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic
+                                ),
+                              ),
+                              SizedBox(
+                                width: 240,
+                                child: LinearProgressIndicator(
+                                  minHeight: 17,
+                                  value: (evaluation.human_score!/10).toDouble(),
+                                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                                  color: humanColor,
+                                  backgroundColor: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            "${evaluation.human_score}",
+                            style: TextStyle(
+                              color: humanColor,
+                              fontSize: 1.5.rem,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                              height: 0.8
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        spacing: 11,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(20)),
+                              image: DecorationImage(
+                                image: AssetImage("assets/images/env_health_icon.png"),
+                              )
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "ENVIRONMENTAL HEALTH SCORE",
+                                style: TextStyle(
+                                  color: envColor,
+                                  fontSize: 0.7.rem,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              SizedBox(
+                                width: 240,
+                                child: LinearProgressIndicator(
+                                  minHeight: 17,
+                                  value: (evaluation.env_score!/10).toDouble(),
+                                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                                  color: envColor,
+                                  backgroundColor: Theme.of(context).colorScheme.outline
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            "${evaluation.env_score}",
+                            style: TextStyle(
+                              color: envColor,
+                              fontSize: 1.5.rem,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                              height: 0.8
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        spacing: 11,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.all(Radius.circular(20)),
+                              image: DecorationImage(
+                                image: AssetImage("assets/images/animal_health_icon.png"),
+                              )
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "ANIMAL HEALTH SCORE",
+                                style: TextStyle(
+                                  color: animColor,
+                                  fontSize: 0.7.rem,
+                                  fontWeight: FontWeight.bold,
+                                  fontStyle: FontStyle.italic
+                                ),
+                              ),
+                              SizedBox(
+                                width: 240,
+                                child: LinearProgressIndicator(
+                                  minHeight: 17,
+                                  value: (evaluation.anim_score!/10).toDouble(),
+                                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                                  color: animColor,
+                                  backgroundColor: Theme.of(context).colorScheme.outline
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            "${evaluation.anim_score}",
+                            style: TextStyle(
+                              color: animColor,
+                              fontSize: 1.5.rem,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                              height: 0.8
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              offset:Offset(3, 3),
+                              blurRadius: 3,
+                              spreadRadius: 3
+                            ),
+                          ]
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(10),
+                          child: Text(
+                            "${evaluation.human_eval}",
+                            style: TextStyle(
+                              fontSize: 0.7.rem
+                            )
+                          ),
+                        )
+                      ),
+                      Container(
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              offset:Offset(3, 3),
+                              blurRadius: 3,
+                              spreadRadius: 3
+                            ),
+                          ]
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(10),
+                          child: Text(
+                            "${evaluation.env_eval}",
+                            style: TextStyle(
+                              fontSize: 0.7.rem
+                            )
+                          ),
+                        )
+                      ),
+                      Container(
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              offset:Offset(3, 3),
+                              blurRadius: 3,
+                              spreadRadius: 3
+                            ),
+                          ]
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(10),
+                          child: Text(
+                            "${evaluation.anim_eval}",
+                            style: TextStyle(
+                              fontSize: 0.7.rem
+                            )
+                          ),
+                        )
+                      ),
+                      Text(
+                        "${evaluation.overall_score}",
+                        style: TextStyle(
+                          color: overallColor,
+                          fontSize: 3.rem,
+                          fontWeight: FontWeight.bold,
+                          height: 0.7,
+                        ),
+                      ),
+                      Text(
+                        "OVERALL SCORE",
+                        style: TextStyle(
+                          fontSize: 1.rem,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          height: 0.7,
+                        ),
+                      ),
+                      Container(
+                        width: 100,
+                        height: 100,
+                        padding: EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage("assets/images/one_health_icon.png"),
+                          )
+                        ),
+                      ),
+                      Container(
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              offset:Offset(3, 3),
+                              blurRadius: 3,
+                              spreadRadius: 3
+                            ),
+                          ]
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(10),
+                          child: Text(
+                            "${evaluation.overall_eval}",
+                            style: TextStyle(
+                              fontSize: 0.7.rem
+                            )
+                          ),
+                        )
+                      ),
+                      Text(
+                        "ANIMALS THAT CAN INHABIT THE AREA",
+                        style: TextStyle(
+                          fontSize: 1.rem,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          height: 0.7,
+                        ),
+                      ),
+                      Container(
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              offset:Offset(3, 3),
+                              blurRadius: 3,
+                              spreadRadius: 3
+                            ),
+                          ]
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for(String animal in evaluation.anim_list!) Text(animal)
+                            ],
+                          )
+                        )
+                      ),
+                      Text(
+                        "RECOMMENDATIONS",
+                        style: TextStyle(
+                          fontSize: 1.rem,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          height: 0.7,
+                        ),
+                      ),
+                      Container(
+                        width: 300,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              offset:Offset(3, 3),
+                              blurRadius: 3,
+                              spreadRadius: 3
+                            ),
+                          ]
+                        ),
+                        child: Container(
+                          margin: EdgeInsets.all(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              for(String reco in evaluation.reco_list!)
+                                Text(
+                                  reco,
+                                  style: TextStyle(
+                                    fontSize: 0.7.rem
+                                  ),
+                                )
+                            ],
+                          )
+                        )
+                      ),
+                      Text(
+                        widget.habitat != null
+                        ? "TRY WITH ACTUAL PICTURES"
+                        : "IMPROVE YOUR AREA WITH THE DIGITAL HABITAT BUILDER",
+                        style: TextStyle(
+                          fontSize: 0.7.rem,
+                          fontWeight: FontWeight.bold,
+                          fontStyle: FontStyle.italic,
+                          height: 0.7,
+                        ),
+                      ),
+                      if(widget.habitat == null)
+                        ElevatedButton.icon(
+                          icon: Icon(Icons.grass),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            BottomNavigationBar navBar = navbarKey.currentWidget as BottomNavigationBar;
+                            navBar.onTap!(2);
+                            exportedImages = widget.images;
+                          }, 
+                          label: Text("Proceed")
+                        ),
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.camera),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        label: Text("Proceed to the Eco-Lens")
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            )
+          ),
+        ]
+      );
+    }
   }
 
   @override
@@ -129,598 +683,50 @@ class _EvaluationState extends State<Evaluation> with SingleTickerProviderStateM
     // control.forward();
   }
 
+  void initializeVariablesOnBuild() {
+    if(evaluation.success_code == 0) {
+      humanColor = scoreRanges[evaluation.human_score!-1];
+      envColor = scoreRanges[evaluation.env_score!-1];
+      animColor = scoreRanges[evaluation.anim_score!-1];
+      overallColor = scoreRanges[evaluation.overall_score!-1];
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if(evaluation.success_code == 0) {
-      human_color = scoreRanges[evaluation.human_score!-1];
-      env_color = scoreRanges[evaluation.env_score!-1];
-      anim_color = scoreRanges[evaluation.anim_score!-1];
-      overall_color = scoreRanges[evaluation.overall_score!-1];
-    }
-    return Container(
-      decoration: BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage("assets/images/evaluation_bg.png"),
-          fit: BoxFit.cover
-        )
-      ),
-      child: Scaffold(
-        // appBar: AppBar(
-        //   backgroundColor: Color(0xFF022000),
-        //   leading: IconButton(
-        //     onPressed: () {
-        //       Navigator.pop(context);
-        //     },
-        //     icon: Icon(
-        //       Icons.keyboard_backspace_outlined,
-        //       color: Colors.white
-        //     )
-        //   )
-        // ),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        body: Center(
-          child: SingleChildScrollView(
-            physics: NeverScrollableScrollPhysics(),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if(loading == true) const CircularProgressIndicator(
-                  color: Color(0xFF83BF4F),
-                  strokeWidth: 9,
-                ) 
-                else Column(
-                  children: [
-                  if(evaluation.success_code == -1)
-                    Container(
-                      width: 300,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(11),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow,
-                            offset:Offset(3, 3),
-                            blurRadius: 3,
-                            spreadRadius: 3
-                          ),
-                        ]
-                      ),
-                      child: Container(
-                        margin: EdgeInsets.all(10),
-                        child: Text("ERROR: PICTURES TOO BLURRY")
-                      )
-                    )
-                  else if(evaluation.success_code == -2)
-                    Container(
-                      width: 300,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(11),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow,
-                            offset:Offset(3, 3),
-                            blurRadius: 3,
-                            spreadRadius: 3
-                          ),
-                        ]
-                      ),
-                      child: Container(
-                        margin: EdgeInsets.all(10),
-                        child: Text("ERROR: PICTURES DONT SHOW ENVIRONMENTAL ASPECTS")
-                      )
-                    )
-                  else if(evaluation.success_code == -3)
-                    Container(
-                      width: 300,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(11),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow,
-                            offset:Offset(3, 3),
-                            blurRadius: 3,
-                            spreadRadius: 3
-                          ),
-                        ]
-                      ),
-                      child: Container(
-                        margin: EdgeInsets.all(10),
-                        child: Text("ERROR: ANALYZE FAILED")
-                      )
-                    )
-                  else
-                    Column(
-                      children: [
-                        Scrollbar(
-                          scrollbarOrientation: ScrollbarOrientation.bottom,
-                          child: Container(
-                            height:240,
-                            width: double.infinity,
-                            alignment: Alignment.center,
-                            child: ListView.builder(
-                              shrinkWrap: true,
-                              scrollDirection: Axis.horizontal,
-                              itemCount: widget.images.length,
-                              itemBuilder: 
-                                (BuildContext context, int index) {
-                                  return Padding(
-                                    padding: EdgeInsets.all(10.0),
-                                    child: Stack(
-                                      children: [
-                                        if(widget.habitat == null && widget.viewMode == false)
-                                          Image.file(File(widget.images[index]),
-                                            height: 200,
-                                            width: 120,
-                                            fit: BoxFit.cover
-                                          ),
-                                        if(widget.habitat != null)
-                                          Image.memory(
-                                            widget.habitat
-                                          ),
-                                        if(widget.habitat == null && widget.viewMode == true && widget.images.length == 3)
-                                          Image.memory(
-                                            base64Decode(widget.images[index])
-                                          )
-                                      ]
-                                    ),
-                                  );
-                                }
-                            )
-                          )
-                        ),
-                        Container(
-                          margin: EdgeInsets.fromLTRB(0, 0, 0, 0),
-                          height: 400,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadiusGeometry.directional(
-                              topStart: Radius.circular(30),
-                              topEnd: Radius.circular(30)
-                            ),
-                            border:BoxBorder.all(
-                              color: Theme.of(context).colorScheme.shadow,
-                              width: 1.0
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color:Theme.of(context).colorScheme.shadow,
-                                blurRadius: 4,
-                                spreadRadius: 4,
-                                offset: Offset.zero,
-                                blurStyle: BlurStyle.normal
-                              )
-                            ]
-                          ),
-                          child: Container(
-                            margin: EdgeInsets.fromLTRB(15, 15, 20, 0),
-                            child: Scrollbar(
-                              scrollbarOrientation: ScrollbarOrientation.right,
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  spacing: 27,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      spacing: 11,
-                                      children: [
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          padding: EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.all(Radius.circular(20)),
-                                            boxShadow: [
-                                              // BoxShadow(
-                                              //   color: human_color,
-                                              //   offset: Offset.zero,
-                                              //   blurRadius: 4,
-                                              //   spreadRadius: 5
-                                              // )
-                                            ],
-                                            image: DecorationImage(
-                                              image: AssetImage("assets/images/human_health_icon.png"),
-                                              
-                                            )
-                                          ),
-                                        ),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "HUMAN HEALTH SCORE",
-                                              style: TextStyle(
-                                                color: human_color,
-                                                fontSize: 0.7.rem,
-                                                fontWeight: FontWeight.bold,
-                                                fontStyle: FontStyle.italic
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              width: 240,
-                                              child: LinearProgressIndicator(
-                                                minHeight: 17,
-                                                value: (evaluation.human_score!/10).toDouble(),
-                                                borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                color: human_color,
-                                                backgroundColor: Theme.of(context).colorScheme.outline,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Text(
-                                          "${evaluation.human_score}",
-                                          style: TextStyle(
-                                            color: human_color,
-                                            fontSize: 1.5.rem,
-                                            fontWeight: FontWeight.bold,
-                                            fontStyle: FontStyle.italic,
-                                            height: 0.8
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      spacing: 11,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          padding: EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.all(Radius.circular(20)),
-                                            boxShadow: [
-                                              // BoxShadow(
-                                              //   color: env_color,
-                                              //   offset: Offset.zero,
-                                              //   blurRadius: 4,
-                                              //   spreadRadius: 5
-                                              // )
-                                            ],
-                                            image: DecorationImage(
-                                              image: AssetImage("assets/images/env_health_icon.png"),
-                                              
-                                            )
-                                          ),
-                                        ),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "ENVIRONMENTAL HEALTH SCORE",
-                                              style: TextStyle(
-                                                color: env_color,
-                                                fontSize: 0.7.rem,
-                                                fontWeight: FontWeight.bold,
-                                                fontStyle: FontStyle.italic,
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              width: 240,
-                                              child: LinearProgressIndicator(
-                                                minHeight: 17,
-                                                value: (evaluation.env_score!/10).toDouble(),
-                                                borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                color: env_color,
-                                                backgroundColor: Theme.of(context).colorScheme.outline
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Text(
-                                          "${evaluation.env_score}",
-                                          style: TextStyle(
-                                            color: env_color,
-                                            fontSize: 1.5.rem,
-                                            fontWeight: FontWeight.bold,
-                                            fontStyle: FontStyle.italic,
-                                            height: 0.8
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      spacing: 11,
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Container(
-                                          width: 40,
-                                          height: 40,
-                                          padding: EdgeInsets.all(10),
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.all(Radius.circular(20)),
-                                            boxShadow: [
-                                              // BoxShadow(
-                                              //   color: anim_color,
-                                              //   offset: Offset.zero,
-                                              //   blurRadius: 4,
-                                              //   spreadRadius: 5
-                                              // )
-                                            ],
-                                            image: DecorationImage(
-                                              image: AssetImage("assets/images/animal_health_icon.png"),
-                                            )
-                                          ),
-                                        ),
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "ANIMAL HEALTH SCORE",
-                                              style: TextStyle(
-                                                color: anim_color,
-                                                fontSize: 0.7.rem,
-                                                fontWeight: FontWeight.bold,
-                                                fontStyle: FontStyle.italic
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              width: 240,
-                                              child: LinearProgressIndicator(
-                                                minHeight: 17,
-                                                value: (evaluation.anim_score!/10).toDouble(),
-                                                borderRadius: BorderRadius.all(Radius.circular(20)),
-                                                color: anim_color,
-                                                backgroundColor: Theme.of(context).colorScheme.outline
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Text(
-                                          "${evaluation.anim_score}",
-                                          style: TextStyle(
-                                            color: anim_color,
-                                            fontSize: 1.5.rem,
-                                            fontWeight: FontWeight.bold,
-                                            fontStyle: FontStyle.italic,
-                                            height: 0.8
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Container(
-                                      width: 300,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(11),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.shadow,
-                                            offset:Offset(3, 3),
-                                            blurRadius: 3,
-                                            spreadRadius: 3
-                                          ),
-                                        ]
-                                      ),
-                                      child: Container(
-                                        margin: EdgeInsets.all(10),
-                                        child: Text(
-                                          "${evaluation.human_eval}",
-                                          style: TextStyle(
-                                            fontSize: 0.7.rem
-                                          )
-                                        ),
-                                      )
-                                    ),
-                                    Container(
-                                      width: 300,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(11),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.shadow,
-                                            offset:Offset(3, 3),
-                                            blurRadius: 3,
-                                            spreadRadius: 3
-                                          ),
-                                        ]
-                                      ),
-                                      child: Container(
-                                        margin: EdgeInsets.all(10),
-                                        child: Text(
-                                          "${evaluation.env_eval}",
-                                          style: TextStyle(
-                                            fontSize: 0.7.rem
-                                          )
-                                        ),
-                                      )
-                                    ),
-                                    Container(
-                                      width: 300,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(11),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.shadow,
-                                            offset:Offset(3, 3),
-                                            blurRadius: 3,
-                                            spreadRadius: 3
-                                          ),
-                                        ]
-                                      ),
-                                      child: Container(
-                                        margin: EdgeInsets.all(10),
-                                        child: Text(
-                                          "${evaluation.anim_eval}",
-                                          style: TextStyle(
-                                            fontSize: 0.7.rem
-                                          )
-                                        ),
-                                      )
-                                    ),
-                                    Text(
-                                      "${evaluation.overall_score}",
-                                      style: TextStyle(
-                                        color: overall_color,
-                                        fontSize: 3.rem,
-                                        fontWeight: FontWeight.bold,
-                                        height: 0.7,
-                                      ),
-                                    ),
-                                    Text(
-                                      "OVERALL SCORE",
-                                      style: TextStyle(
-                                        fontSize: 1.rem,
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FontStyle.italic,
-                                        height: 0.7,
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      padding: EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        image: DecorationImage(
-                                          image: AssetImage("assets/images/one_health_icon.png"),
-                                        )
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 300,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(11),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.shadow,
-                                            offset:Offset(3, 3),
-                                            blurRadius: 3,
-                                            spreadRadius: 3
-                                          ),
-                                        ]
-                                      ),
-                                      child: Container(
-                                        margin: EdgeInsets.all(10),
-                                        child: Text(
-                                          "${evaluation.overall_eval}",
-                                          style: TextStyle(
-                                            fontSize: 0.7.rem
-                                          )
-                                        ),
-                                      )
-                                    ),
-                                    Text(
-                                      "ANIMALS THAT CAN INHABIT THE AREA",
-                                      style: TextStyle(
-                                        fontSize: 1.rem,
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FontStyle.italic,
-                                        height: 0.7,
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 300,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(11),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.shadow,
-                                            offset:Offset(3, 3),
-                                            blurRadius: 3,
-                                            spreadRadius: 3
-                                          ),
-                                        ]
-                                      ),
-                                      child: Container(
-                                        margin: EdgeInsets.all(10),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            for(String animal in evaluation.anim_list!) Text(animal)
-                                          ],
-                                        )
-                                      )
-                                    ),
-                                    Text(
-                                      "RECOMMENDATIONS",
-                                      style: TextStyle(
-                                        fontSize: 1.rem,
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FontStyle.italic,
-                                        height: 0.7,
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 300,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surface,
-                                        borderRadius: BorderRadius.circular(11),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Theme.of(context).colorScheme.shadow,
-                                            offset:Offset(3, 3),
-                                            blurRadius: 3,
-                                            spreadRadius: 3
-                                          ),
-                                        ]
-                                      ),
-                                      child: Container(
-                                        margin: EdgeInsets.all(10),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            for(String reco in evaluation.reco_list!)
-                                              Text(
-                                                reco,
-                                                style: TextStyle(
-                                                  fontSize: 0.7.rem
-                                                ),
-                                              )
-                                          ],
-                                        )
-                                      )
-                                    ),
-                                    Text(
-                                      widget.habitat != null
-                                      ? "TRY WITH ACTUAL PICTURES"
-                                      : "IMPROVE YOUR AREA WITH THE DIGITAL HABITAT BUILDER",
-                                      style: TextStyle(
-                                        fontSize: 0.7.rem,
-                                        fontWeight: FontWeight.bold,
-                                        fontStyle: FontStyle.italic,
-                                        height: 0.7,
-                                      ),
-                                    ),
-                                    if(widget.habitat == null)
-                                      ElevatedButton.icon(
-                                        icon: Icon(Icons.grass),
-                                        onPressed: () {
-                                          Navigator.pop(context);
-                                          BottomNavigationBar navBar = navbarKey.currentWidget as BottomNavigationBar;
-                                          navBar.onTap!(2);
-                                          exported_images = widget.images;
-                                        }, 
-                                        label: Text("Proceed")
-                                      ),
-                                    ElevatedButton.icon(
-                                      icon: Icon(Icons.camera),
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                      },
-                                      label: Text("Proceed to the Eco-Lens")
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ),
-                          )
-                        ),
-                      ]
-                    )
-                  ],
-                ),
-              ],
-            ),
+    evaluation.success_code = 0;
+    evaluation.human_score = 1;
+
+    initializeVariablesOnBuild();
+
+    categoryScore = {
+      "human": evaluation.human_score,
+      "environmental": evaluation.env_score,
+      "animal": evaluation.anim_score,
+    };
+    
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("assets/images/evaluation_bg.png"),
+            fit: BoxFit.cover,
+            opacity: 0.5
           )
-        )
-      ),
+        ),
+        child: (() {
+          if (loading == false) {
+            return const CircularProgressIndicator(
+              color: Color(0xFF83BF4F),
+              strokeWidth: 9,
+            );
+          }
+          else {
+            return buildEvaluationResultsContent();
+          }
+        }) (),
+      )
     );
   }
 }

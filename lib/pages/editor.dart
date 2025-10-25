@@ -71,12 +71,12 @@ class _EditorPageState extends State<EditorPage> {
       if (mounted) {
         setState(() {
           _dataLoaded = true;
-          if(exported_images.isEmpty == false) {
-            Image image = Image.file(File(exported_images[0]));
+          if(exportedImages.isEmpty == false) {
+            Image image = Image.file(File(exportedImages[0]));
             defaultBackdrop = image.image;
             var temp = defaultBackdrops.toList();
-            for(int i = 0; i < exported_images.length; i++) {
-              temp.add(MapEntry("Scanned Image #${i+1}", exported_images[i]));
+            for(int i = 0; i < exportedImages.length; i++) {
+              temp.add(MapEntry("Scanned Image #${i+1}", exportedImages[i]));
             }
             defaultBackdrops = temp;
           }

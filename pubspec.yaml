@@ -42,6 +42,7 @@ flutter:
     - assets/images/logo.png
     - assets/images/dhblogo.png
     - assets/images/ecolenslogo.png
+    - assets/images/score_icons/
     
   fonts:
     - family: Gabarito

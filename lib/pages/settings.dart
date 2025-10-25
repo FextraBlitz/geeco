@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geeco/modules/shortsettings.dart';
 // replaced test_about import with about page
 import 'package:geeco/pages/about.dart';
-import 'package:geeco/state/app_state.dart';
+// import 'package:geeco/state/app_state.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -36,7 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
               backgroundColor: green,
               foregroundColor: Colors.white,
               elevation: 6,
-              shadowColor: Colors.black.withOpacity(0.15),
+              shadowColor: Colors.black.withAlpha(38),
               padding: const EdgeInsets.symmetric(
                 horizontal: 36.0,
                 vertical: 14.0,
