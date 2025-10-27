@@ -34,6 +34,7 @@ class MainApp extends StatelessWidget {
       builder: () {
         return MaterialApp(
           theme: Provider.of<ThemeSelector>(context).themeData,
+          darkTheme: darkMode(),
           home: const SplashPage(),
         );
       },

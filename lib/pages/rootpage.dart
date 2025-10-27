@@ -81,7 +81,7 @@ class _RootPageState extends State<RootPage> {
                     Container(
                       width: 1,
                       height: 28,
-                      color: Colors.white.withOpacity(0.85),
+                      color: Colors.white.withAlpha(217),
                     ),
                     // increase gap so the page name sits a bit to the right
                     const SizedBox(width: 8),

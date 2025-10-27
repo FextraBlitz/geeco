@@ -51,38 +51,10 @@ class _ShortSettingsState extends State<ShortSettings> {
                       ),
                       Switch(
                         // This bool value toggles the switch.
-                        value: Provider.of<ThemeSelector>(context).themeData == darkMode,
+                        value: Provider.of<ThemeSelector>(context).isDark,
                         activeColor: Theme.of(context).colorScheme.secondary,
                         onChanged: (bool value) {
-                          // This is called when the user toggles the switch.
-                          setState(() {
-                            //darkMode = value;
-                          });
-                  Provider.of<ThemeSelector>(context, listen: false).toggle();
-                        },
-                      ),
-                    ],
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.notifications),
-                SizedBox(width: 8), 
-                          Text(
-                            "Notifications",
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: notificationsEnabled,
-                        activeColor: Theme.of(context).colorScheme.secondary,
-                        onChanged: (bool value) {
-                          setState(() {
-                            notificationsEnabled = value;
-                          });
+                          Provider.of<ThemeSelector>(context, listen: false).toggle();
                         },
                       ),
                     ],

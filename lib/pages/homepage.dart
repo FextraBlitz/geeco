@@ -76,18 +76,18 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               Center(
-                child: SizedBox(
-                  width: ScaledSizeUtil.screenWidth * 0.8,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 0.0),
                   child: FittedBox(
-                    fit: BoxFit.scaleDown,
                     alignment: Alignment.center,
                     child: history.isEmpty
                     ? Text(
-                        "No evaluations to show. Scan or Edit to get started!",
+                        "No evaluations to show yet. Scan or Edit to get started!",
                         maxLines: 1,
                         softWrap: false,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          color: const Color.fromARGB(255, 73, 73, 73),
                           fontWeight: FontWeight.bold,
                           fontSize: 1.25.rem,
                           fontFamily: "Gabarito",
